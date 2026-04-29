@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Breathing">
+<title>Breathing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+button { cursor: pointer; background: none; border: none; font: inherit; color: inherit; }
+
+/* ── Design Tokens ── */
+:root {
+  --font-body:    'Work Sans', sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+
+  --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.8rem  + 0.35vw, 1rem);
+  --text-base: clamp(1rem,     0.95rem + 0.25vw, 1.125rem);
+  --text-lg:   clamp(1.125rem, 1rem    + 0.75vw, 1.5rem);
+  --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
+
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  --radius-sm:   0.375rem;
+  --radius-md:   0.5rem;
+  --radius-lg:   0.75rem;
+  --radius-full: 9999px;
+
+  --transition-ui: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Dark Theme (default) ── */
+[data-theme="dark"], :root {
+  --color-bg-from:   #070d1a;
+  --color-bg-to:     #0e1628;
+  --color-surface:   rgba(255,255,255,0.04);
+  --color-border:    rgba(255,255,255,0.08);
+  --color-text:      #e8eef5;
+  --color-text-muted:#7a90a8;
+  --color-text-faint:#3a4d62;
+  --color-primary:   #f5c040;
+  --color-primary-hover: #ffb000;
+  --color-stop:      rgba(60,130,220,0.12);
+  --color-stop-text: #7ab8ff;
+  --color-stop-border: rgba(100,170,255,0.25);
+}
+
+/* ── Light Theme ── */
+[data-theme="light"] {
+  --color-bg-from:   #1a2540;
+  --color-bg-to:     #111d35;
+  --color-surface:   rgba(255,255,255,0.07);
+  --color-border:    rgba(255,255,255,0.12);
+  --color-text:      #e8eef5;
+  --color-text-muted:#8aa4bf;
+  --color-text-faint:#4a6080;
+  --color-primary:   #f5c040;
+  --color-primary-hover: #ffb000;
+  --color-stop:      rgba(60,130,220,0.15);
+  --color-stop-text: #7ab8ff;
+  --color-stop-border: rgba(100,170,255,0.3);
+}
+
+/* ── Layout ── */
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: linear-gradient(160deg, var(--color-bg-from) 0%, var(--color-bg-to) 100%);
+  min-height: 100dvh;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+}
+
+/* ── Ambient background layer ── */
+#ambient {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 50%,
+    rgba(245,200,80,0.18) 0%,
+    rgba(255,140,0,0.08) 40%,
+    transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+/* ── Canvas ── */
+#orb-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  #orb-canvas { display: none; }
+}
+
+/* ── Header ── */
+header {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-8);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.logo-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: var(--color-text);
+  opacity: 0.9;
+}
+
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  transition: color var(--transition-ui), background var(--transition-ui), border-color var(--transition-ui);
+}
+.theme-toggle:hover { color: var(--color-text); background: rgba(255,255,255,0.08); }
+
+/* ── Center stage ── */
+.stage {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+  flex: 1;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.phase-label {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+  opacity: 0.85;
+  min-height: 2.5rem;
+  transition: opacity 0.4s ease;
+}
+
+.cycle-counter {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  min-height: 1.4rem;
+}
+
+/* ── Progress bars ── */
+.progress-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(320px, 80vw);
+  margin-top: var(--space-2);
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.progress-row-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  width: 52px;
+  text-align: right;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.progress-track {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.07);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+#phase-fill {
+  background: linear-gradient(90deg, rgba(120,185,255,0.6), rgba(245,200,80,0.8));
+}
+
+#session-fill {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ── Controls ── */
+.controls {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  padding: 0 var(--space-8) var(--space-8);
+}
+
+/* Start/Stop/Resume button */
+.btn-main {
+  height: 52px;
+  padding: 0 var(--space-10);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background var(--transition-ui), color var(--transition-ui),
+              border-color var(--transition-ui), transform var(--transition-ui),
+              box-shadow var(--transition-ui);
+}
+
+.btn-main.state-start {
+  background: var(--color-primary);
+  color: #1a0e00;
+  border: none;
+  box-shadow: 0 0 24px rgba(245,180,40,0.3);
+}
+.btn-main.state-start:hover {
+  background: var(--color-primary-hover);
+  box-shadow: 0 0 32px rgba(245,180,40,0.45);
+  transform: translateY(-1px);
+}
+.btn-main.state-start:active { transform: translateY(0); }
+
+.btn-main.state-stop {
+  background: var(--color-stop);
+  color: var(--color-stop-text);
+  border: 1px solid var(--color-stop-border);
+}
+.btn-main.state-stop:hover {
+  background: rgba(60,130,220,0.2);
+}
+
+/* Duration pills */
+.duration-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  max-width: 420px;
+}
+
+.min-btn {
+  height: 32px;
+  min-width: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: background var(--transition-ui), color var(--transition-ui),
+              border-color var(--transition-ui);
+}
+
+.min-btn:hover:not(:disabled) {
+  color: var(--color-text);
+  background: rgba(255,255,255,0.08);
+}
+
+.min-btn[aria-pressed="true"] {
+  background: rgba(245,192,64,0.15);
+  color: var(--color-primary);
+  border-color: rgba(245,192,64,0.4);
+}
+
+.min-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.duration-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: calc(-1 * var(--space-1));
+}
+
+/* ── Reduced motion fallback ── */
+.reduced-motion-orb {
+  display: none;
+  width: min(180px, 45vw);
+  height: min(180px, 45vw);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(220,240,255,0.6) 0%, rgba(60,130,220,0.3) 60%, transparent 100%);
+  animation: pulse-ring 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reduced-motion-orb { display: block; }
+  @keyframes pulse-ring {
+    0%, 100% { transform: scale(0.85); opacity: 0.6; }
+    50% { transform: scale(1.1); opacity: 1; }
+  }
+}
+
+/* ── Completion message ── */
+.completion-msg {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-style: italic;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+.completion-msg.visible { opacity: 1; }
+
+/* ── Focus ── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+</style>
+</head>
+<body>
+
+<div id="ambient" aria-hidden="true"></div>
+<canvas id="orb-canvas" aria-hidden="true"></canvas>
+
+<!-- Header -->
+<header>
+  <div class="logo" aria-label="Breathing app">
+    <!-- SVG logo mark: two arcs suggesting inhalation/exhalation -->
+    <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <circle cx="16" cy="16" r="9" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.5"/>
+      <circle cx="16" cy="16" r="5" fill="currentColor" fill-opacity="0.15"/>
+      <circle cx="16" cy="16" r="5" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.8"/>
+      <path d="M16 7 C16 7 20 11 20 16 C20 21 16 25 16 25" stroke="currentColor" stroke-width="1" stroke-opacity="0.4" stroke-linecap="round"/>
+      <path d="M16 7 C16 7 12 11 12 16 C12 21 16 25 16 25" stroke="currentColor" stroke-width="1" stroke-opacity="0.4" stroke-linecap="round"/>
+    </svg>
+    <span class="logo-text">Breathing</span>
+  </div>
+
+  <button class="theme-toggle" aria-label="Switch to light mode" data-theme-toggle>
+    <!-- Moon icon (shown in dark mode) -->
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+</header>
+
+<!-- Main stage -->
+<main class="stage">
+  <div class="reduced-motion-orb" aria-hidden="true"></div>
+
+  <p class="phase-label" id="phase-label" aria-live="polite" aria-atomic="true">—</p>
+
+  <div class="progress-bars">
+    <div class="progress-row">
+      <span class="progress-row-label" aria-hidden="true">phase</span>
+      <div class="progress-track">
+        <div class="progress-fill" id="phase-fill"
+             role="progressbar" aria-label="Current phase progress"
+             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+    </div>
+    <div class="progress-row">
+      <span class="progress-row-label" aria-hidden="true">session</span>
+      <div class="progress-track">
+        <div class="progress-fill" id="session-fill"
+             role="progressbar" aria-label="Session progress"
+             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="cycle-counter" id="cycle-counter" aria-live="polite"></p>
+  <p class="completion-msg" id="completion-msg">Well done. Take a moment.</p>
+</main>
+
+<!-- Controls -->
+<section class="controls" aria-label="Breathing controls">
+  <button class="btn-main state-start" id="main-btn" aria-label="Start breathing session">
+    Start
+  </button>
+
+  <div>
+    <p class="duration-label">Duration</p>
+    <div class="duration-group" role="group" aria-label="Session duration in minutes" id="duration-group">
+    </div>
+  </div>
+</section>
+
+<script>
+// ─── Constants ──────────────────────────────────────────────────────────────
+const RISE_MS  = 4000;
+const FALL_MS  = 6000;
+const CYCLE_MS = 10000;
+let   MAX_CYCLES = 12;
+
+const PARTICLE_COUNT = 18;
+
+// Orb palette
+const IN_CORE  = [255, 220, 100];
+const IN_MID   = [255, 155,  20];
+const IN_OUTER = [220,  80,   0];
+const EX_CORE  = [220, 240, 255];
+const EX_MID   = [120, 190, 255];
+const EX_OUTER = [ 60, 130, 220];
+
+// ─── Easing ─────────────────────────────────────────────────────────────────
+// Inhale: smooth S-curve — ramps up gently, peaks gently
+function easeInOutSine(t) { return -(Math.cos(Math.PI * t) - 1) / 2; }
+// Exhale: immediate release from peak, soft landing
+// FIX: was easeInOutSine → causes ~0.5s freeze at peak due to zero derivative at both ends
+function easeOutSine(t)   { return Math.sin((t * Math.PI) / 2); }
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let running        = false;
+let cyclesDone     = 0;
+let cycleStart     = 0;
+let pauseAt        = null;
+let currentPy      = 0;
+let currentPhase   = 'idle';
+let rafId          = null;
+let particles      = [];
+let particlesSpawned = false;
+let selectedMinutes = 2;
+
+// ─── DOM refs ────────────────────────────────────────────────────────────────
+const canvas       = document.getElementById('orb-canvas');
+const ctx          = canvas.getContext('2d');
+const ambient      = document.getElementById('ambient');
+const phaseLabel   = document.getElementById('phase-label');
+const phaseFill    = document.getElementById('phase-fill');
+const sessionFill  = document.getElementById('session-fill');
+const cycleCounter = document.getElementById('cycle-counter');
+const mainBtn      = document.getElementById('main-btn');
+const completionMsg= document.getElementById('completion-msg');
+const durationGroup= document.getElementById('duration-group');
+
+// ─── Canvas sizing ───────────────────────────────────────────────────────────
+let W, H, DPR;
+
+function resizeCanvas() {
+  DPR = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  W = rect.width  || window.innerWidth;
+  H = rect.height || window.innerHeight;
+  canvas.width  = W * DPR;
+  canvas.height = H * DPR;
+  ctx.scale(DPR, DPR);
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ─── Color helpers ───────────────────────────────────────────────────────────
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function lerpRGB(colA, colB, t) {
+  return [
+    Math.round(lerp(colA[0], colB[0], t)),
+    Math.round(lerp(colA[1], colB[1], t)),
+    Math.round(lerp(colA[2], colB[2], t))
+  ];
+}
+
+function rgb(col, a) {
+  return a !== undefined
+    ? `rgba(${col[0]},${col[1]},${col[2]},${a})`
+    : `rgb(${col[0]},${col[1]},${col[2]})`;
+}
+
+// ─── Particle helpers ─────────────────────────────────────────────────────────
+function spawnParticles(cx, cy, r) {
+  particles = [];
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const angle = (i / PARTICLE_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+    const speed = 0.3 + Math.random() * 0.4;
+    particles.push({
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      size: 1.5 + Math.random() * 2.5,
+      decay: 0.008 + Math.random() * 0.006
+    });
+  }
+}
+
+// ─── Draw orb ────────────────────────────────────────────────────────────────
+function drawFrame(py) {
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const cy = H / 2;
+  const minR = Math.min(W, H) * 0.10;
+  const maxR = Math.min(W, H) * 0.32;
+  const r    = minR + (maxR - minR) * py;
+
+  const core  = lerpRGB(EX_CORE,  IN_CORE,  py);
+  const mid   = lerpRGB(EX_MID,   IN_MID,   py);
+  const outer = lerpRGB(EX_OUTER, IN_OUTER, py);
+
+  // Layer 1: Far outer haze
+  const haze = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 3.5);
+  haze.addColorStop(0,   rgb(core,  0.06 + py * 0.06));
+  haze.addColorStop(0.4, rgb(mid,   0.04 + py * 0.04));
+  haze.addColorStop(1,   rgb(outer, 0));
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = haze;
+  ctx.fill();
+
+  // Layer 2: Mid glow ring
+  const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 2.0);
+  glow.addColorStop(0,   rgb(core,  0.0));
+  glow.addColorStop(0.5, rgb(mid,   0.08 + py * 0.1));
+  glow.addColorStop(1,   rgb(outer, 0));
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 2.0, 0, Math.PI * 2);
+  ctx.fillStyle = glow;
+  ctx.fill();
+
+  // Layer 3: Core orb body (off-center highlight)
+  const hlx = cx - r * 0.28;
+  const hly = cy - r * 0.28;
+  const body = ctx.createRadialGradient(hlx, hly, 0, cx, cy, r);
+  body.addColorStop(0,   rgb(core,  0.95));
+  body.addColorStop(0.35, rgb(core, 0.80));
+  body.addColorStop(0.65, rgb(mid,  0.70));
+  body.addColorStop(1,    rgb(outer,0.85));
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = body;
+  ctx.fill();
+
+  // Layer 4: Inner rim
+  const rimAlpha = 0.12 + py * 0.2;
+  const rim = ctx.createRadialGradient(cx, cy, r * 0.75, cx, cy, r);
+  rim.addColorStop(0,   rgba(255,255,255,0));
+  rim.addColorStop(0.7, rgba(255,255,255,rimAlpha * 0.3));
+  rim.addColorStop(1,   rgba(255,255,255,rimAlpha));
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = rim;
+  ctx.fill();
+
+  // Layer 5: Particles
+  const pcol = lerpRGB(EX_MID, IN_CORE, py);
+  particles = particles.filter(p => p.life > 0);
+  for (const p of particles) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = rgb(pcol, p.life * 0.55);
+    ctx.fill();
+    p.x    += p.vx;
+    p.y    += p.vy;
+    p.life -= p.decay;
+  }
+}
+
+// rgba helper for rim layer
+function rgba(r, g, b, a) { return `rgba(${r},${g},${b},${a})`; }
+
+// ─── Animation loop ──────────────────────────────────────────────────────────
+function tick(now) {
+  if (!running) return;
+
+  const elapsed = now - cycleStart;
+  const clampedElapsed = Math.min(elapsed, CYCLE_MS);
+
+  let py, phase;
+
+  if (elapsed < RISE_MS) {
+    // Inhale phase
+    phase = 'inhale';
+    const t = elapsed / RISE_MS;
+    py = easeInOutSine(t);              // smooth S-curve up
+    particlesSpawned = false;           // reset spawn guard each inhale
+    updatePhaseBar(elapsed, RISE_MS);
+  } else {
+    // Exhale phase
+    phase = 'exhale';
+    const t = Math.min((elapsed - RISE_MS) / FALL_MS, 1);
+    py = 1 - easeOutSine(t);           // FIX: immediate release, soft landing
+
+    // Spawn particles once at exhale onset
+    if (!particlesSpawned) {
+      const cx = W / 2;
+      const cy = H / 2;
+      const minR = Math.min(W, H) * 0.10;
+      const maxR = Math.min(W, H) * 0.32;
+      const r = minR + (maxR - minR) * 1;
+      spawnParticles(cx, cy, r);
+      particlesSpawned = true;
+    }
+    updatePhaseBar(elapsed - RISE_MS, FALL_MS);
+  }
+
+  // Cycle complete
+  if (elapsed >= CYCLE_MS) {
+    cyclesDone++;
+    updateSessionBar();
+    updateCycleCounter();
+
+    if (cyclesDone >= MAX_CYCLES) {
+      finishSession();
+      return;
+    }
+
+    cycleStart = now;
+    particlesSpawned = false;
+  }
+
+  // Phase label
+  if (phase !== currentPhase) {
+    currentPhase = phase;
+    phaseLabel.textContent = phase === 'inhale' ? 'Inhale' : 'Exhale';
+  }
+
+  currentPy = py;
+  drawFrame(py);
+  ambient.style.opacity = (py * 0.9).toFixed(2);
+
+  rafId = requestAnimationFrame(tick);
+}
+
+function updatePhaseBar(elapsed, duration) {
+  const pct = Math.min((elapsed / duration) * 100, 100).toFixed(1);
+  phaseFill.style.width = pct + '%';
+  phaseFill.setAttribute('aria-valuenow', Math.round(pct));
+}
+
+function updateSessionBar() {
+  const pct = Math.min((cyclesDone / MAX_CYCLES) * 100, 100).toFixed(1);
+  sessionFill.style.width = pct + '%';
+  sessionFill.setAttribute('aria-valuenow', Math.round(pct));
+}
+
+function updateCycleCounter() {
+  const remaining = MAX_CYCLES - cyclesDone;
+  cycleCounter.textContent = remaining > 0
+    ? `${cyclesDone} / ${MAX_CYCLES} cycles`
+    : `${MAX_CYCLES} / ${MAX_CYCLES} cycles`;
+}
+
+// ─── Session control ──────────────────────────────────────────────────────────
+function startAnim() {
+  if (pauseAt !== null) {
+    // Resume from pause
+    cycleStart = performance.now() - pauseAt;
+    pauseAt = null;
+  } else {
+    // Fresh start
+    cyclesDone = 0;
+    cycleStart = performance.now();
+    particlesSpawned = false;
+    particles = [];
+    currentPhase = 'idle';
+    phaseLabel.textContent = 'Inhale';
+    phaseFill.style.width = '0%';
+    sessionFill.style.width = '0%';
+    phaseFill.setAttribute('aria-valuenow', 0);
+    sessionFill.setAttribute('aria-valuenow', 0);
+    updateCycleCounter();
+    completionMsg.classList.remove('visible');
+  }
+
+  running = true;
+  setDurationDisabled(true);
+  mainBtn.textContent = 'Stop';
+  mainBtn.className = 'btn-main state-stop';
+  mainBtn.setAttribute('aria-label', 'Stop breathing session');
+
+  rafId = requestAnimationFrame(tick);
+}
+
+function stopAnim() {
+  running = false;
+  pauseAt = performance.now() - cycleStart;
+  cancelAnimationFrame(rafId);
+
+  mainBtn.textContent = 'Resume';
+  mainBtn.className = 'btn-main state-start';
+  mainBtn.setAttribute('aria-label', 'Resume breathing session');
+  setDurationDisabled(false);
+}
+
+function finishSession() {
+  running = false;
+  cancelAnimationFrame(rafId);
+  pauseAt = null;
+  currentPhase = 'idle';
+
+  drawFrame(0);
+  ambient.style.opacity = '0';
+  phaseLabel.textContent = '—';
+  phaseFill.style.width = '0%';
+  sessionFill.style.width = '100%';
+  updateCycleCounter();
+
+  mainBtn.textContent = 'Start Again';
+  mainBtn.className = 'btn-main state-start';
+  mainBtn.setAttribute('aria-label', 'Start a new breathing session');
+  setDurationDisabled(false);
+
+  completionMsg.classList.add('visible');
+}
+
+mainBtn.addEventListener('click', () => {
+  if (running) {
+    stopAnim();
+  } else if (pauseAt !== null) {
+    startAnim();
+  } else {
+    startAnim();
+  }
+});
+
+// ─── Duration selector ────────────────────────────────────────────────────────
+function buildDurationButtons() {
+  for (let m = 1; m <= 10; m++) {
+    const btn = document.createElement('button');
+    btn.className = 'min-btn';
+    btn.textContent = `${m}m`;
+    btn.setAttribute('aria-pressed', m === selectedMinutes ? 'true' : 'false');
+    btn.setAttribute('aria-label', `${m} minute${m > 1 ? 's' : ''}`);
+    btn.dataset.minutes = m;
+    btn.addEventListener('click', () => selectDuration(m));
+    durationGroup.appendChild(btn);
+  }
+}
+
+function selectDuration(minutes) {
+  selectedMinutes = minutes;
+  MAX_CYCLES = minutes * 6;
+
+  // Reset session state
+  cyclesDone = 0;
+  pauseAt = null;
+  particles = [];
+  phaseFill.style.width = '0%';
+  sessionFill.style.width = '0%';
+  phaseLabel.textContent = '—';
+  cycleCounter.textContent = '';
+  completionMsg.classList.remove('visible');
+  drawFrame(0);
+  ambient.style.opacity = '0';
+
+  mainBtn.textContent = 'Start';
+  mainBtn.className = 'btn-main state-start';
+  mainBtn.setAttribute('aria-label', 'Start breathing session');
+
+  durationGroup.querySelectorAll('.min-btn').forEach(btn => {
+    btn.setAttribute('aria-pressed', parseInt(btn.dataset.minutes) === minutes ? 'true' : 'false');
+  });
+}
+
+function setDurationDisabled(disabled) {
+  durationGroup.querySelectorAll('.min-btn').forEach(btn => {
+    btn.disabled = disabled;
+  });
+}
+
+buildDurationButtons();
+// Select default
+durationGroup.querySelector('[data-minutes="2"]').setAttribute('aria-pressed', 'true');
+
+// ─── Theme toggle ─────────────────────────────────────────────────────────────
+const themeToggle = document.querySelector('[data-theme-toggle]');
+let currentTheme = 'dark';
+
+themeToggle.addEventListener('click', () => {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  themeToggle.setAttribute('aria-label', `Switch to ${currentTheme === 'dark' ? 'light' : 'dark'} mode`);
+  themeToggle.innerHTML = currentTheme === 'dark'
+    ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`
+    : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+});
+
+// ─── Initial render ───────────────────────────────────────────────────────────
+drawFrame(0);
+</script>
+</body>
+</html>
